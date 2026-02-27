@@ -20,7 +20,7 @@ class SupplierConnectedCard extends StatelessWidget {
     return GestureDetector(
       onTap: () => onChanged?.call(!isChecked),
       child: Container(
-        height: 80,
+        height: 84,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
         decoration: BoxDecoration(
           color: AppColors.neutralWhiteLighter,

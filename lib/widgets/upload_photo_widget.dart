@@ -35,7 +35,7 @@ class _UploadPhotoWidgetState extends State<UploadPhotoWidget> {
             ),
             child: TextButton(
               onPressed: () {
-                print('hallo world');
+                Navigator.pushNamed(context, '/scan-camera');
               },
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,

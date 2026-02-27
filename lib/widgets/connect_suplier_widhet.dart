@@ -2,26 +2,30 @@ import 'package:retail_smb/theme/color_schema.dart';
 import 'package:retail_smb/theme/custom_text_style.dart';
 import 'package:flutter/material.dart';
 
-class ConnectSuplierWidhet extends StatefulWidget {
-  const ConnectSuplierWidhet({super.key});
+class ConnectSuplierWidhet extends StatelessWidget {
+  final VoidCallback? onPressed;
+  final String label;
+  final bool enabled;
 
-  @override
-  State<ConnectSuplierWidhet> createState() => _ConnectSuplierWidhetState();
-}
+  const ConnectSuplierWidhet({
+    super.key,
+    this.onPressed,
+    this.label = 'Connect selected suppliers',
+    this.enabled = true,
+  });
 
-class _ConnectSuplierWidhetState extends State<ConnectSuplierWidhet> {
   @override
   Widget build(BuildContext context) {
+    final backgroundColor =
+        enabled ? AppColors.primaryBimaBase : AppColors.neutralGreyDark;
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.primaryBimaBase,
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(8),
       ),
       child: TextButton(
-        onPressed: () {
-          print('Connect selected suppliers');
-        },
+        onPressed: enabled ? onPressed : null,
         style: TextButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
           foregroundColor: AppColors.neutralWhiteLighter,
@@ -32,7 +36,7 @@ class _ConnectSuplierWidhetState extends State<ConnectSuplierWidhet> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Text(
-              'Connect selected suppliers',
+              label,
               style: AppTextStyles.button.copyWith(
                 fontWeight: FontWeight.w500,
               ),

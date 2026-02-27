@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:retail_smb/screens/starter_screen.dart';
-import 'package:retail_smb/screens/wa_phone_numbers_loader_screen.dart';
 import 'package:retail_smb/theme/color_schema.dart';
 
 class LoginWidget extends StatefulWidget {
@@ -34,11 +32,7 @@ class _LoginWidgetState extends State<LoginWidget> {
       return;
     }
 
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => const StarterScreen(),
-      ),
-    );
+    Navigator.pushReplacementNamed(context, '/operational-documents');
   }
 
   @override

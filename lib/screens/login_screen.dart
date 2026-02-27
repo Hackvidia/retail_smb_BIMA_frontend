@@ -34,17 +34,18 @@ class _LoginHero extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: 360,
-      height: 210,
+      height: 120,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             flex: 5,
             child: Align(
-              alignment: const Alignment(-0.2, 0.42),
-              child: Transform.rotate(
-                angle: -0.52,
-                child: const _PuzzleShape(size: 136),
+              alignment: Alignment.topRight,
+              child: Image.asset(
+                'assets/images/puzzle-piece-icon.png',
+                width: 120,
+                fit: BoxFit.contain,
               ),
             ),
           ),
@@ -53,7 +54,7 @@ class _LoginHero extends StatelessWidget {
             child: Align(
               alignment: Alignment.topRight,
               child: Image.asset(
-                'assets/images/sm-icon.png',
+                'assets/images/bima-icon.png',
                 width: 170,
                 fit: BoxFit.contain,
               ),

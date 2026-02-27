@@ -66,10 +66,34 @@ class _UpdateStockScreenState extends State<UpdateStockScreen> {
                                   child: Column(
                                     spacing: AppSize.width(context, 0.03),
                                     children: [
-                                      DetectionCardWidget(),
-                                      DetectionCardWidget(),
-                                      DetectionCardWidget(),
-                                      DetectionCardWidget(),
+                                      DetectionCardWidget(
+                                        name: 'ANL ACTIFIT 3X MP GINGER 20G',
+                                        unitPrice: 20833,
+                                        quantity: 3,
+                                        onIncrement: () {},
+                                        onDecrement: () {},
+                                      ),
+                                      DetectionCardWidget(
+                                        name: 'SUSU KENTAL MANIS COKLAT 370 GR',
+                                        unitPrice: 12500,
+                                        quantity: 2,
+                                        onIncrement: () {},
+                                        onDecrement: () {},
+                                      ),
+                                      DetectionCardWidget(
+                                        name: 'MIE INSTAN KARI AYAM 75 GR',
+                                        unitPrice: 3500,
+                                        quantity: 5,
+                                        onIncrement: () {},
+                                        onDecrement: () {},
+                                      ),
+                                      DetectionCardWidget(
+                                        name: 'MINYAK GORENG 1 LITER',
+                                        unitPrice: 16500,
+                                        quantity: 4,
+                                        onIncrement: () {},
+                                        onDecrement: () {},
+                                      ),
                                     ],
                                   ),
                                 ),

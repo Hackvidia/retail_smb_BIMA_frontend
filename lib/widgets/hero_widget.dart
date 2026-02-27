@@ -7,8 +7,9 @@ class HeroWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned(
+      left: AppSize.width(context, 0.05),
       top: AppSize.width(context, 0.05),
-      child: Image.asset('assets/images/default-bg.png'),
+      child: Image.asset('assets/images/bima-left-icon.png'),
     );
   }
 }

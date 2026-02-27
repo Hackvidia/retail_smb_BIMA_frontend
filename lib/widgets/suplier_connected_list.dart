@@ -1,9 +1,10 @@
 import 'package:retail_smb/data-defenition/suplier.dart';
 import 'package:flutter/material.dart';
 import 'package:retail_smb/theme/app_sizing.dart';
+import 'package:retail_smb/theme/color_schema.dart';
 import 'supplier_connected_card.dart';
 
-class SupplierConnectedList extends StatelessWidget {
+class SupplierConnectedList extends StatefulWidget {
   final List<Supplier> suppliers;
   final List<bool> selectedValues;
   final Function(int index, bool value)? onChanged;
@@ -20,24 +21,48 @@ class SupplierConnectedList extends StatelessWidget {
         );
 
   @override
+  State<SupplierConnectedList> createState() => _SupplierConnectedListState();
+}
+
+class _SupplierConnectedListState extends State<SupplierConnectedList> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: maxHeight,
-      child: Scrollbar(
+      height: widget.maxHeight,
+      child: RawScrollbar(
+        controller: _scrollController,
+        thumbColor: AppColors.primaryBimaBase,
+        trackVisibility: false,
         thumbVisibility: true,
-        radius: const Radius.circular(20),
+        radius: const Radius.circular(16),
         thickness: 6,
+        minThumbLength: 44,
         child: ListView.separated(
+          controller: _scrollController,
           padding: EdgeInsets.zero,
-          itemCount: suppliers.length,
+          itemCount: widget.suppliers.length,
           separatorBuilder: (_, __) =>
               SizedBox(height: AppSize.width(context, 0.03)),
           itemBuilder: (context, index) => SupplierConnectedCard(
-            name: suppliers[index].name,
-            phone: suppliers[index].phone,
-            isChecked: selectedValues[index],
+            name: widget.suppliers[index].name,
+            phone: widget.suppliers[index].phone,
+            isChecked: widget.selectedValues[index],
             onChanged: (value) {
-              onChanged?.call(index, value);
+              widget.onChanged?.call(index, value);
             },
           ),
         ),

@@ -14,10 +14,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _navigateToAction(String title) {
     Navigator.of(
       context,
-    ).push(MaterialPageRoute(
-        builder: (context) => title == '/'
-            ? const _DummyActionScreen(title: 'Add Data')
-            : _DummyActionScreen(title: title)));
+    ).push(MaterialPageRoute(builder: (_) => _DummyActionScreen(title: title)));
   }
 
   @override
@@ -38,7 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   QuickActionMenuItem(
                     title: 'Add Data',
                     assetPath: 'assets/images/bima-icon.png',
-                    onTap: () => _navigateToAction('/'),
+                    onTap: () => _navigateToAction('Add Data'),
                   ),
                   QuickActionMenuItem(
                     title: 'Activity',
@@ -168,9 +165,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               children: [
                 TextSpan(text: 'Lv. '),
-                TextSpan(
-                    text: 'Beginner',
-                    style: TextStyle(fontWeight: FontWeight.w700)),
+                TextSpan(text: 'Beginner', style: TextStyle(fontWeight: FontWeight.w700)),
               ],
             ),
           ),
@@ -217,8 +212,7 @@ class _HomeScreenState extends State<HomeScreen> {
               clipBehavior: Clip.none,
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
                   decoration: BoxDecoration(
                     color: AppColors.primaryBimaDarker,
                     borderRadius: BorderRadius.circular(5),
@@ -251,8 +245,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showActionMessage(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
