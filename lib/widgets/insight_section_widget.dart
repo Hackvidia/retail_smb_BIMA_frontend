@@ -94,14 +94,14 @@ class InsightSectionWidget extends StatelessWidget {
   const InsightSectionWidget.financialDiary({
     super.key,
     required this.financialDiaryData,
-    this.title = 'Financial Diary',
+    this.title = 'Monthly Financial Diary',
     this.showSeeAll = true,
     this.onSeeAllTap,
-  }) : variant = InsightWidgetVariant.financialDiary,
-       outOfTrendRows = const [],
-       priceChanges = const [],
-       demandTrendData = null,
-       transactionTrendData = null;
+  })  : variant = InsightWidgetVariant.financialDiary,
+        outOfTrendRows = const [],
+        priceChanges = const [],
+        demandTrendData = null,
+        transactionTrendData = null;
 
   const InsightSectionWidget.outOfTrend({
     super.key,
@@ -109,11 +109,11 @@ class InsightSectionWidget extends StatelessWidget {
     this.title = 'Out of Trend!',
     this.showSeeAll = true,
     this.onSeeAllTap,
-  }) : variant = InsightWidgetVariant.outOfTrend,
-       financialDiaryData = null,
-       priceChanges = const [],
-       demandTrendData = null,
-       transactionTrendData = null;
+  })  : variant = InsightWidgetVariant.outOfTrend,
+        financialDiaryData = null,
+        priceChanges = const [],
+        demandTrendData = null,
+        transactionTrendData = null;
 
   const InsightSectionWidget.priceChange({
     super.key,
@@ -121,11 +121,11 @@ class InsightSectionWidget extends StatelessWidget {
     this.title = 'Price Change',
     this.showSeeAll = true,
     this.onSeeAllTap,
-  }) : variant = InsightWidgetVariant.priceChange,
-       financialDiaryData = null,
-       outOfTrendRows = const [],
-       demandTrendData = null,
-       transactionTrendData = null;
+  })  : variant = InsightWidgetVariant.priceChange,
+        financialDiaryData = null,
+        outOfTrendRows = const [],
+        demandTrendData = null,
+        transactionTrendData = null;
 
   const InsightSectionWidget.demandTrend({
     super.key,
@@ -133,11 +133,11 @@ class InsightSectionWidget extends StatelessWidget {
     this.title = 'Demand Trend',
     this.showSeeAll = true,
     this.onSeeAllTap,
-  }) : variant = InsightWidgetVariant.demandTrend,
-       financialDiaryData = null,
-       outOfTrendRows = const [],
-       priceChanges = const [],
-       transactionTrendData = null;
+  })  : variant = InsightWidgetVariant.demandTrend,
+        financialDiaryData = null,
+        outOfTrendRows = const [],
+        priceChanges = const [],
+        transactionTrendData = null;
 
   const InsightSectionWidget.transactionTrend({
     super.key,
@@ -145,11 +145,11 @@ class InsightSectionWidget extends StatelessWidget {
     this.title = 'Transaction Trend',
     this.showSeeAll = true,
     this.onSeeAllTap,
-  }) : variant = InsightWidgetVariant.transactionTrend,
-       financialDiaryData = null,
-       outOfTrendRows = const [],
-       priceChanges = const [],
-       demandTrendData = null;
+  })  : variant = InsightWidgetVariant.transactionTrend,
+        financialDiaryData = null,
+        outOfTrendRows = const [],
+        priceChanges = const [],
+        demandTrendData = null;
 
   @override
   Widget build(BuildContext context) {
@@ -232,9 +232,11 @@ class _FinancialDiaryContent extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _LegendDot(label: data.costText, color: const Color(0xFFEAECF0)),
+                _LegendDot(
+                    label: data.costText, color: const Color(0xFFEAECF0)),
                 const SizedBox(height: 12),
-                _LegendDot(label: data.profitText, color: AppColors.primaryBimaBase),
+                _LegendDot(
+                    label: data.profitText, color: AppColors.primaryBimaBase),
               ],
             ),
           ),
@@ -356,7 +358,9 @@ class _InsightTableHeader extends StatelessWidget {
       child: const Row(
         children: [
           Expanded(child: _HeaderLabel(text: 'Item', align: TextAlign.left)),
-          Expanded(child: _HeaderLabel(text: 'Stock Level', align: TextAlign.center)),
+          Expanded(
+              child:
+                  _HeaderLabel(text: 'Stock Level', align: TextAlign.center)),
           Expanded(child: _HeaderLabel(text: 'Status', align: TextAlign.right)),
         ],
       ),
@@ -609,7 +613,8 @@ class _DonutChartPainter extends CustomPainter {
       ..strokeWidth = strokeWidth;
 
     canvas.drawArc(rect, -math.pi / 2, math.pi * 2, false, bgPaint);
-    canvas.drawArc(rect, -math.pi / 2, (math.pi * 2) * progress, false, valuePaint);
+    canvas.drawArc(
+        rect, -math.pi / 2, (math.pi * 2) * progress, false, valuePaint);
   }
 
   @override
@@ -646,7 +651,8 @@ class _LineChartPainter extends CustomPainter {
       Offset(chartRight, chartBottom),
       axisPaint,
     );
-    canvas.drawLine(Offset(chartLeft, chartTop), Offset(chartLeft, chartBottom), axisPaint);
+    canvas.drawLine(
+        Offset(chartLeft, chartTop), Offset(chartLeft, chartBottom), axisPaint);
 
     if (points.isEmpty) return;
     final maxValue = points.reduce(math.max);
@@ -708,7 +714,8 @@ class _BarChartPainter extends CustomPainter {
       Offset(chartRight, chartBottom),
       axisPaint,
     );
-    canvas.drawLine(Offset(chartLeft, chartTop), Offset(chartLeft, chartBottom), axisPaint);
+    canvas.drawLine(
+        Offset(chartLeft, chartTop), Offset(chartLeft, chartBottom), axisPaint);
 
     if (bars.isEmpty) return;
     final maxBar = bars.reduce(math.max);

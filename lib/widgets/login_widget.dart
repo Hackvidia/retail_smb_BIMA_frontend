@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:retail_smb/services/auth_service.dart';
+import 'package:retail_smb/state/app_session_state.dart';
 import 'package:retail_smb/theme/color_schema.dart';
 
 class LoginWidget extends StatefulWidget {
@@ -12,16 +14,19 @@ class _LoginWidgetState extends State<LoginWidget> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _authService.dispose();
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     final isValid = _formKey.currentState?.validate() ?? false;
     if (!isValid) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -31,6 +36,41 @@ class _LoginWidgetState extends State<LoginWidget> {
       );
       return;
     }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final result = await _authService.login(
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (!result.success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result.message ?? 'Login failed')),
+      );
+      return;
+    }
+
+    final token = result.token?.trim();
+    if (token == null || token.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login succeeded but token is missing.')),
+      );
+      return;
+    }
+
+    await AppSessionState.instance.setAuthToken(token);
+    if (!mounted) return;
 
     Navigator.pushReplacementNamed(context, '/operational-documents');
   }
@@ -162,7 +202,7 @@ class _LoginWidgetState extends State<LoginWidget> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _submit,
+                onPressed: _isLoading ? null : _submit,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryBimaBase,
                   foregroundColor: AppColors.neutralWhiteLighter,
@@ -173,21 +213,36 @@ class _LoginWidgetState extends State<LoginWidget> {
                   ),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-                child: const Text(
-                  'Masuk',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    height: 1.5,
-                  ),
-                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppColors.neutralWhiteLighter,
+                          ),
+                        ),
+                      )
+                    : const Text(
+                        'Masuk',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          height: 1.5,
+                        ),
+                      ),
               ),
             ),
             const SizedBox(height: 24),
             TextButton(
-              onPressed: () =>
-                  Navigator.pushReplacementNamed(context, '/signup'),
+              onPressed: _isLoading
+                  ? null
+                  : () => Navigator.pushReplacementNamed(
+                        context,
+                        '/operational-documents',
+                      ),
               style: TextButton.styleFrom(foregroundColor: Colors.black),
               child: const Text.rich(
                 TextSpan(

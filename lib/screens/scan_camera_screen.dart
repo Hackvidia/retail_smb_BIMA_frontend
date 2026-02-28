@@ -4,6 +4,8 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:retail_smb/models/capture_flow_args.dart';
+import 'package:retail_smb/state/app_session_state.dart';
 import 'package:retail_smb/theme/color_schema.dart';
 import 'package:retail_smb/widgets/camera_bottom_controls.dart';
 import 'package:retail_smb/widgets/camera_overlay_frame.dart';
@@ -29,6 +31,10 @@ class _ScanCameraScreenState extends State<ScanCameraScreen>
   bool _isPermissionPermanentlyDenied = false;
   String? _errorMessage;
   int _initRequestId = 0;
+  bool _markFirstInputOnUsePhoto = false;
+  WarehouseStockAction _stockAction = WarehouseStockAction.insert;
+  String? _stockDocumentType;
+  bool _isFlowArgsInitialized = false;
 
   @override
   void initState() {
@@ -43,6 +49,20 @@ class _ScanCameraScreenState extends State<ScanCameraScreen>
     WidgetsBinding.instance.removeObserver(this);
     _controller?.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_isFlowArgsInitialized) return;
+    _isFlowArgsInitialized = true;
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is ScanCameraArgs) {
+      _markFirstInputOnUsePhoto = args.markFirstInputOnUsePhoto;
+      _stockAction = args.action;
+      _stockDocumentType = args.stockDocumentType;
+      AppSessionState.instance.setCurrentStockAction(_stockAction);
+    }
   }
 
   @override
@@ -240,7 +260,16 @@ class _ScanCameraScreenState extends State<ScanCameraScreen>
     _controller = null;
     await oldController?.dispose();
     if (!mounted) return;
-    await Navigator.pushNamed(context, '/submit-capture', arguments: imagePath);
+    await Navigator.pushNamed(
+      context,
+      '/submit-capture',
+      arguments: SubmitCaptureArgs(
+        imagePath: imagePath,
+        markFirstInputOnUsePhoto: _markFirstInputOnUsePhoto,
+        action: _stockAction,
+        stockDocumentType: _stockDocumentType,
+      ),
+    );
     if (!mounted) return;
     unawaited(_initializeCamera(startIndex: _selectedCameraIndex));
   }

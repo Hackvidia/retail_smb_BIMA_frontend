@@ -1,6 +1,8 @@
 import 'dart:io';
 
+import 'package:retail_smb/models/capture_flow_args.dart';
 import 'package:retail_smb/models/detection_result_item.dart';
+import 'package:retail_smb/state/app_session_state.dart';
 import 'package:retail_smb/theme/app_sizing.dart';
 import 'package:retail_smb/theme/color_schema.dart';
 import 'package:retail_smb/theme/custom_text_style.dart';
@@ -18,6 +20,7 @@ class SubmitCaptureScreen extends StatefulWidget {
 
 class _SubmitCaptureScreenState extends State<SubmitCaptureScreen> {
   String? _imagePath;
+  bool _markFirstInputOnUsePhoto = false;
 
   void _retakePhoto() {
     if (Navigator.of(context).canPop()) {
@@ -29,6 +32,10 @@ class _SubmitCaptureScreenState extends State<SubmitCaptureScreen> {
   }
 
   void _usePhoto() {
+    if (_markFirstInputOnUsePhoto) {
+      AppSessionState.instance.markFirstInputCompleted();
+    }
+
     final args = PhotoDetectionArgs(
       imagePath: _imagePath,
       detectedItems: const [
@@ -61,6 +68,9 @@ class _SubmitCaptureScreenState extends State<SubmitCaptureScreen> {
     if (_imagePath == null) {
       if (widget.imagePath != null && widget.imagePath!.isNotEmpty) {
         _imagePath = widget.imagePath;
+      } else if (routeArgument is SubmitCaptureArgs) {
+        _imagePath = routeArgument.imagePath;
+        _markFirstInputOnUsePhoto = routeArgument.markFirstInputOnUsePhoto;
       } else if (routeArgument is String && routeArgument.isNotEmpty) {
         _imagePath = routeArgument;
       }

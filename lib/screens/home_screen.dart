@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:retail_smb/models/starter_screen_args.dart';
 import 'package:retail_smb/theme/color_schema.dart';
 import 'package:retail_smb/widgets/app_bottom_navigation_bar.dart';
 import 'package:retail_smb/widgets/quick_action_widget.dart';
@@ -12,6 +13,14 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   void _navigateToAction(String title) {
+    if (title == 'Add Data') {
+      Navigator.pushNamed(
+        context,
+        '/starter-app',
+        arguments: const StarterScreenArgs(mode: StarterEntryMode.returning),
+      );
+      return;
+    }
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => _DummyActionScreen(title: title)));
@@ -165,7 +174,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               children: [
                 TextSpan(text: 'Lv. '),
-                TextSpan(text: 'Beginner', style: TextStyle(fontWeight: FontWeight.w700)),
+                TextSpan(
+                    text: 'Beginner',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
               ],
             ),
           ),
@@ -212,7 +223,8 @@ class _HomeScreenState extends State<HomeScreen> {
               clipBehavior: Clip.none,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
                   decoration: BoxDecoration(
                     color: AppColors.primaryBimaDarker,
                     borderRadius: BorderRadius.circular(5),
@@ -245,7 +257,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showActionMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 }
 

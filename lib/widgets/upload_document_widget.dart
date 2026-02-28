@@ -1,19 +1,13 @@
+import 'package:flutter/material.dart';
+import 'package:retail_smb/models/capture_flow_args.dart';
+import 'package:retail_smb/state/app_session_state.dart';
 import 'package:retail_smb/theme/app_sizing.dart';
 import 'package:retail_smb/theme/color_schema.dart';
 import 'package:retail_smb/theme/custom_text_style.dart';
-import 'package:flutter/material.dart';
-import 'package:retail_smb/models/capture_flow_args.dart';
 
-class UploadPhotoWidget extends StatefulWidget {
-  final VoidCallback? onUploadTap;
+class UploadDocumentWidget extends StatelessWidget {
+  const UploadDocumentWidget({super.key});
 
-  const UploadPhotoWidget({super.key, this.onUploadTap});
-
-  @override
-  State<UploadPhotoWidget> createState() => _UploadPhotoWidgetState();
-}
-
-class _UploadPhotoWidgetState extends State<UploadPhotoWidget> {
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -27,8 +21,12 @@ class _UploadPhotoWidgetState extends State<UploadPhotoWidget> {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text('Upload Stock Note Photos', style: AppTextStyles.bodyMediumBold),
-          Text('BIMA helps tidy up records', style: AppTextStyles.bodySmall),
+          Text('Upload Sales & Cost', style: AppTextStyles.bodyMediumBold),
+          Text(
+            'Use this to subtract stocks from warehouse',
+            style: AppTextStyles.bodySmall,
+            textAlign: TextAlign.center,
+          ),
           SizedBox(height: AppSize.width(context, 0.03)),
           Container(
             decoration: BoxDecoration(
@@ -38,25 +36,17 @@ class _UploadPhotoWidgetState extends State<UploadPhotoWidget> {
             ),
             child: TextButton(
               onPressed: () {
-                if (widget.onUploadTap != null) {
-                  widget.onUploadTap!();
-                  return;
-                }
-                Navigator.pushNamed(
-                  context,
-                  '/camera-prep',
-                  arguments: const CameraPrepArgs(
-                    action: WarehouseStockAction.insert,
-                  ),
-                );
+                AppSessionState.instance
+                    .setCurrentStockAction(WarehouseStockAction.subtract);
+                Navigator.pushNamed(context, '/operational-documents');
               },
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Icon(Icons.photo, color: AppColors.neutralWhiteDark),
+                  Icon(Icons.description, color: AppColors.neutralWhiteDark),
                   SizedBox(width: AppSize.width(context, 0.01)),
-                  Text('Upload Foto', style: AppTextStyles.button),
+                  Text('Upload Sales & Cost', style: AppTextStyles.button),
                 ],
               ),
             ),

@@ -40,6 +40,10 @@ dependencies:
   image_picker: ^1.1.2
   path_provider: ^2.1.5
   permission_handler: ^11.3.1
+  http: ^1.2.2
+  http_parser: ^4.1.2
+  file_picker: ^8.1.2
+  shared_preferences: ^2.3.2
 
 dev_dependencies:
   flutter_test:
@@ -84,6 +88,8 @@ flutter:
     - assets/images/bima-icon.png
     - assets/images/bima-left-icon.png
     - assets/images/puzzle-piece-icon.png
+    - assets/images/shelves-photo.png
+    - assets/images/supplier-invoice.png
 
   # list giving the asset and other descriptors for the font. For
   # example:

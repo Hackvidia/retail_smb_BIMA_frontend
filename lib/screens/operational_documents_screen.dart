@@ -1,5 +1,10 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:retail_smb/models/operational_document_item.dart';
+import 'package:retail_smb/services/document_extract_service.dart';
+import 'package:retail_smb/services/document_storage_service.dart';
+import 'package:retail_smb/models/capture_flow_args.dart';
+import 'package:retail_smb/state/app_session_state.dart';
 import 'package:retail_smb/theme/app_sizing.dart';
 import 'package:retail_smb/theme/color_schema.dart';
 
@@ -14,89 +19,215 @@ class OperationalDocumentsScreen extends StatefulWidget {
 class _OperationalDocumentsScreenState
     extends State<OperationalDocumentsScreen> {
   static const List<String> _documentTypes = [
-    'Daily sales',
-    'Product price list',
-    'Operational expenditures',
-    'Capital expenditures',
+    'Stock Boxes',
+    'Supplier Docs',
+    'Document Price List',
+    'Document Sales Record',
+    'Document Operational Expenditures',
+    'Capital Expenditures',
   ];
 
+  final DocumentStorageService _storageService = DocumentStorageService();
+  final DocumentExtractService _extractService = DocumentExtractService();
   final List<OperationalDocumentItem> _uploadedDocuments = [];
+
   String? _selectedType;
   bool _isDropdownOpen = false;
+  bool _isUploading = false;
+  bool _isLoadingSavedDocs = true;
+  String? _uploadingType;
 
   bool get _hasUploadedDocs => _uploadedDocuments.isNotEmpty;
 
+  @override
+  void initState() {
+    super.initState();
+    _initializeState();
+  }
+
+  Future<void> _initializeState() async {
+    AppSessionState.instance.setCurrentStockAction(WarehouseStockAction.subtract);
+    await AppSessionState.instance.hydrate();
+    final docs = await _storageService.loadDocuments();
+
+    final List<OperationalDocumentItem> validDocs = <OperationalDocumentItem>[];
+    for (final doc in docs) {
+      final exists = await _storageService.localFileExists(doc.localPath);
+      if (exists) {
+        validDocs.add(doc);
+      }
+    }
+    await _storageService.saveDocuments(validDocs);
+
+    if (!mounted) return;
+    setState(() {
+      _uploadedDocuments
+        ..clear()
+        ..addAll(validDocs);
+      _isLoadingSavedDocs = false;
+    });
+  }
+
   void _toggleDropdown() {
+    if (_isUploading) return;
     setState(() {
       _isDropdownOpen = !_isDropdownOpen;
     });
   }
 
   void _selectType(String type) {
+    if (_isUploading) return;
     setState(() {
       _selectedType = type;
       _isDropdownOpen = false;
     });
   }
 
-  void _uploadDocument() {
+  Future<void> _uploadDocument() async {
+    if (_isUploading) return;
+
     final type = _selectedType;
     if (type == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Please select operational document type.')),
-      );
+      _showSnack('Please select operational document type.');
       return;
     }
 
-    final fileNumber =
-        _uploadedDocuments.where((doc) => doc.type == type).length + 1;
-    final fileName = _buildFileName(type, fileNumber);
-    final fileSizeMb = 16.5 + fileNumber * 1.8;
+    final FilePickerResult? picked = await FilePicker.platform.pickFiles(
+      allowMultiple: false,
+      type: FileType.custom,
+      allowedExtensions: const [
+        'pdf',
+        'doc',
+        'docx',
+        'xls',
+        'xlsx',
+        'csv',
+        'txt',
+        'jpg',
+        'jpeg',
+        'png',
+      ],
+    );
+
+    if (!mounted || picked == null || picked.files.isEmpty) {
+      return;
+    }
+
+    final pickedFile = picked.files.first;
+    final sourcePath = pickedFile.path;
+    if (sourcePath == null || sourcePath.trim().isEmpty) {
+      _showSnack('Failed to read selected file path.');
+      return;
+    }
+
+    final persisted = await _storageService.persistPickedFile(
+      type: type,
+      sourcePath: sourcePath,
+      originalFileName: pickedFile.name,
+      bytes: pickedFile.size,
+    );
+
+    if (!mounted) return;
 
     setState(() {
-      _uploadedDocuments.add(
-        OperationalDocumentItem(
-          type: type,
-          fileName: fileName,
-          sizeLabel: '${fileSizeMb.toStringAsFixed(2).replaceAll('.', ',')} MB',
-        ),
-      );
+      _uploadedDocuments.add(persisted);
       _isDropdownOpen = false;
     });
+    await _storageService.saveDocuments(_uploadedDocuments);
   }
 
-  String _buildFileName(String type, int index) {
-    switch (type) {
-      case 'Daily sales':
-        return 'Daily Sales Report ${index.toString().padLeft(2, '0')}.doc';
-      case 'Product price list':
-        return index == 1
-            ? 'Pricelist Bulan Januari.doc'
-            : 'Pricelist Bulan ${index + 1}.doc';
-      case 'Operational expenditures':
-        return 'Operational Cost ${index.toString().padLeft(2, '0')}.doc';
-      case 'Capital expenditures':
-        return 'Capital Expenditures ${index.toString().padLeft(2, '0')}.doc';
-      default:
-        return 'Operational Document $index.doc';
-    }
-  }
+  Future<void> _removeDocument(int index) async {
+    if (_isUploading || index < 0 || index >= _uploadedDocuments.length) return;
+    final doc = _uploadedDocuments[index];
 
-  void _removeDocument(int index) {
     setState(() {
       _uploadedDocuments.removeAt(index);
     });
+
+    await _storageService.deleteLocalFile(doc);
+    await _storageService.saveDocuments(_uploadedDocuments);
   }
 
-  void _useDocuments() {
-    Navigator.pushNamed(
-      context,
-      '/operational-documents-summary',
-      arguments: OperationalDocumentsSummaryArgs(
-        uploadedDocuments: List<OperationalDocumentItem>.from(_uploadedDocuments),
-      ),
-    );
+  Future<void> _useDocuments() async {
+    if (_isUploading) return;
+    if (_uploadedDocuments.isEmpty) {
+      _showSnack('Please upload at least one document.');
+      return;
+    }
+
+    String? token = AppSessionState.instance.authToken;
+    if (token == null || token.isEmpty) {
+      await AppSessionState.instance.hydrate();
+      token = AppSessionState.instance.authToken;
+    }
+    if (token == null || token.isEmpty) {
+      _showSnack('Session expired. Please login again.');
+      return;
+    }
+
+    setState(() {
+      _isUploading = true;
+    });
+
+    try {
+      final grouped = <String, List<OperationalDocumentItem>>{};
+      final List<DocumentExtractionRef> extractionRefs = [];
+      for (final doc in _uploadedDocuments) {
+        grouped.putIfAbsent(doc.type, () => <OperationalDocumentItem>[]).add(doc);
+      }
+
+      for (final type in _documentTypes) {
+        final docsForType = grouped[type];
+        if (docsForType == null || docsForType.isEmpty) continue;
+
+        if (!mounted) return;
+        setState(() {
+          _uploadingType = type;
+        });
+
+        final result = await _extractService.uploadForType(
+          type: type,
+          documents: docsForType,
+          token: token,
+        );
+
+        if (!result.success) {
+          _showSnack(result.message ?? 'Failed uploading $type.');
+          return;
+        }
+        final extractionId = result.extractionId?.trim();
+        if (extractionId == null || extractionId.isEmpty) {
+          _showSnack('Upload succeeded but extractionId is missing for $type.');
+          return;
+        }
+        extractionRefs.add(
+          DocumentExtractionRef(type: type, extractionId: extractionId),
+        );
+      }
+
+      if (!mounted) return;
+      Navigator.pushNamed(
+        context,
+        '/operational-documents-summary',
+        arguments: OperationalDocumentsSummaryArgs(
+          uploadedDocuments:
+              List<OperationalDocumentItem>.from(_uploadedDocuments),
+          extractionRefs: extractionRefs,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+          _uploadingType = null;
+        });
+      }
+    }
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -105,40 +236,34 @@ class _OperationalDocumentsScreenState
       backgroundColor: AppColors.neutralWhiteLight,
       body: SafeArea(
         child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: SizedBox(
-              width: 370,
-              child: Stack(
-                children: [
-                  Positioned(
-                    left: 18,
-                    child: Container(
-                      width: 330,
-                      height: 330,
-                      decoration: const BoxDecoration(
-                        color: AppColors.primaryBimaLighter,
-                        shape: BoxShape.circle,
-                      ),
+          child: _isLoadingSavedDocs
+              ? const CircularProgressIndicator()
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: SizedBox(
+                    width: 370,
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 0),
+                          child: _buildBubbleAndMascot(),
+                        ),
+                        if (_hasUploadedDocs)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: _buildBackButton(),
+                            ),
+                          ),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 24),
+                          child: _buildMainContainer(),
+                        ),
+                      ],
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 0),
-                    child: _buildBubbleAndMascot(),
-                  ),
-                  if (_hasUploadedDocs)
-                    Positioned(
-                      left: 12,
-                      child: _buildBackButton(),
-                    ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 40),
-                    child: _buildMainContainer(),
-                  ),
-                ],
-              ),
-            ),
-          ),
+                ),
         ),
       ),
     );
@@ -186,7 +311,7 @@ class _OperationalDocumentsScreenState
 
   Widget _buildBackButton() {
     return InkWell(
-      onTap: () => Navigator.pop(context),
+      onTap: _isUploading ? null : () => Navigator.pop(context),
       borderRadius: BorderRadius.circular(8),
       child: Container(
         width: 40,
@@ -256,6 +381,19 @@ class _OperationalDocumentsScreenState
             _buildDropdownMenu(),
           ],
           const SizedBox(height: 14),
+          if (_isUploading && _uploadingType != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Text(
+                'Uploading $_uploadingType...',
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.primaryBimaBase,
+                ),
+              ),
+            ),
           if (_hasUploadedDocs)
             Expanded(
               child: ListView.separated(
@@ -275,14 +413,14 @@ class _OperationalDocumentsScreenState
                 Expanded(
                   child: _outlinedButton(
                     label: 'Add more',
-                    onTap: _uploadDocument,
+                    onTap: _isUploading ? null : _uploadDocument,
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: _filledButton(
-                    label: 'Continue',
-                    onTap: _useDocuments,
+                    label: 'Use Docs',
+                    onTap: _isUploading ? null : _useDocuments,
                     icon: null,
                   ),
                 ),
@@ -291,7 +429,7 @@ class _OperationalDocumentsScreenState
           else
             _filledButton(
               label: 'Upload Document',
-              onTap: _uploadDocument,
+              onTap: _isUploading ? null : _uploadDocument,
               icon: const Icon(
                 Icons.folder,
                 size: 20,
@@ -456,7 +594,7 @@ class _OperationalDocumentsScreenState
             ),
           ),
           InkWell(
-            onTap: () => _removeDocument(index),
+            onTap: _isUploading ? null : () => _removeDocument(index),
             borderRadius: BorderRadius.circular(5),
             child: const SizedBox(
               width: 34,
@@ -471,14 +609,14 @@ class _OperationalDocumentsScreenState
 
   Widget _filledButton({
     required String label,
-    required VoidCallback onTap,
+    required Future<void> Function()? onTap,
     required Widget? icon,
   }) {
     return SizedBox(
       width: double.infinity,
       height: 48,
       child: ElevatedButton(
-        onPressed: onTap,
+        onPressed: onTap == null ? null : () => onTap(),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primaryBimaBase,
           foregroundColor: AppColors.neutralWhiteLighter,
@@ -496,7 +634,7 @@ class _OperationalDocumentsScreenState
               label,
               style: const TextStyle(
                 fontFamily: 'Inter',
-                fontSize: 28 / 2,
+                fontSize: 14,
                 fontWeight: FontWeight.w500,
                 height: 1.5,
               ),
@@ -509,13 +647,13 @@ class _OperationalDocumentsScreenState
 
   Widget _outlinedButton({
     required String label,
-    required VoidCallback onTap,
+    required Future<void> Function()? onTap,
   }) {
     return SizedBox(
       width: double.infinity,
       height: 48,
       child: OutlinedButton(
-        onPressed: onTap,
+        onPressed: onTap == null ? null : () => onTap(),
         style: OutlinedButton.styleFrom(
           side: const BorderSide(color: AppColors.primaryBimaBase),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -524,7 +662,7 @@ class _OperationalDocumentsScreenState
           label,
           style: const TextStyle(
             fontFamily: 'Inter',
-            fontSize: 28 / 2,
+            fontSize: 14,
             fontWeight: FontWeight.w500,
             height: 1.5,
             color: AppColors.primaryBimaBase,
