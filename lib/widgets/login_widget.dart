@@ -241,7 +241,7 @@ class _LoginWidgetState extends State<LoginWidget> {
                   ? null
                   : () => Navigator.pushReplacementNamed(
                         context,
-                        '/operational-documents',
+                        '/signup',
                       ),
               style: TextButton.styleFrom(foregroundColor: Colors.black),
               child: const Text.rich(
@@ -256,7 +256,7 @@ class _LoginWidgetState extends State<LoginWidget> {
                   ),
                   children: [
                     TextSpan(
-                      text: 'Log in',
+                      text: 'Signup',
                       style: TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ],

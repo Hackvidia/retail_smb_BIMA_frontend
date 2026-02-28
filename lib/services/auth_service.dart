@@ -18,6 +18,18 @@ class AuthLoginResult {
   final String? token;
 }
 
+class AuthRegisterResult {
+  const AuthRegisterResult({
+    required this.success,
+    required this.statusCode,
+    this.message,
+  });
+
+  final bool success;
+  final int statusCode;
+  final String? message;
+}
+
 class AuthService {
   AuthService({http.Client? client}) : _client = client ?? http.Client();
 
@@ -91,6 +103,71 @@ class AuthService {
         success: false,
         statusCode: 0,
         message: 'Unexpected error while logging in.',
+      );
+    }
+  }
+
+  Future<AuthRegisterResult> register({
+    required String email,
+    required String password,
+  }) async {
+    final Uri url = Uri.parse('$_baseUrl/auth/register');
+
+    try {
+      final http.Response response = await _client
+          .post(
+            url,
+            headers: const {
+              HttpHeaders.acceptHeader: 'application/json',
+              HttpHeaders.contentTypeHeader: 'application/json',
+            },
+            body: jsonEncode({
+              'email': email,
+              'password': password,
+            }),
+          )
+          .timeout(const Duration(seconds: 45));
+
+      final Map<String, dynamic>? body = _tryDecodeJsonObject(response.body);
+      final String? message = _extractMessage(body);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return AuthRegisterResult(
+          success: true,
+          statusCode: response.statusCode,
+          message: message ?? 'Register success',
+        );
+      }
+
+      return AuthRegisterResult(
+        success: false,
+        statusCode: response.statusCode,
+        message: message ?? 'Register failed (${response.statusCode})',
+      );
+    } on TimeoutException {
+      return const AuthRegisterResult(
+        success: false,
+        statusCode: 0,
+        message:
+            'Request timed out after 45s. Please check your internet or try again.',
+      );
+    } on SocketException {
+      return const AuthRegisterResult(
+        success: false,
+        statusCode: 0,
+        message: 'Cannot connect to server. Check your internet connection.',
+      );
+    } on http.ClientException catch (e) {
+      return AuthRegisterResult(
+        success: false,
+        statusCode: 0,
+        message: 'Network client error: ${e.message}',
+      );
+    } catch (_) {
+      return const AuthRegisterResult(
+        success: false,
+        statusCode: 0,
+        message: 'Unexpected error while signing up.',
       );
     }
   }

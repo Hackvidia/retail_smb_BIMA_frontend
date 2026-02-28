@@ -20,9 +20,23 @@ class _OperationalDocumentsSummaryScreenState
     'Stock Boxes',
     'Supplier Docs',
   };
+  static const Set<String> _confirmableOperationalTypes = {
+    'Document Price List',
+    'Document Sales Record',
+    'Document Operational Expenditures',
+    'Daily Sales',
+    'Product Price List',
+    'Operational Expenditures',
+    'Capital Expenditures',
+  };
+  static final Set<String> _confirmableOperationalTypesNormalized =
+      _confirmableOperationalTypes
+          .map((e) => e.trim().toLowerCase())
+          .toSet();
 
   bool _isInitialized = false;
   bool _isLoading = true;
+  bool _isConfirming = false;
   String? _errorMessage;
 
   List<DocumentExtractionRef> _extractionRefs = const [];
@@ -95,7 +109,55 @@ class _OperationalDocumentsSummaryScreenState
     }
   }
 
-  void _onContinue() {
+  Future<void> _onContinue() async {
+    if (_isConfirming) return;
+    setState(() => _isConfirming = true);
+    try {
+      await AppSessionState.instance.hydrate();
+      final token = AppSessionState.instance.authToken;
+      if (token == null || token.trim().isEmpty) {
+        throw Exception('Session expired. Please login again.');
+      }
+
+      final refsToConfirm = _extractionRefs
+          .where((it) => _isConfirmableOperationalType(it.type))
+          .toList();
+      debugPrint(
+        '[OperationalDocumentsSummary] Continue pressed. allRefs=${_extractionRefs.map((e) => '${e.type}:${e.extractionId}').toList()} confirmRefs=${refsToConfirm.map((e) => '${e.type}:${e.extractionId}').toList()}',
+      );
+      if (refsToConfirm.isEmpty) {
+        throw Exception('No operational extraction found to confirm.');
+      }
+
+      for (final ref in refsToConfirm) {
+        final result = await _extractService.confirmByType(
+          type: ref.type,
+          extractionId: ref.extractionId,
+          token: token,
+        );
+        if (!result.success) {
+          throw Exception(
+            result.message ?? 'Failed to confirm ${ref.type}.',
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e.toString().replaceFirst('Exception: ', ''),
+            ),
+          ),
+        );
+      }
+      if (mounted) {
+        setState(() => _isConfirming = false);
+      }
+      return;
+    }
+
+    if (!mounted) return;
     if (AppSessionState.instance.isFirstTimeInput) {
       Navigator.pushReplacementNamed(
         context,
@@ -105,6 +167,12 @@ class _OperationalDocumentsSummaryScreenState
       return;
     }
     Navigator.pushReplacementNamed(context, '/insight-screen');
+  }
+
+  bool _isConfirmableOperationalType(String type) {
+    return _confirmableOperationalTypesNormalized.contains(
+      type.trim().toLowerCase(),
+    );
   }
 
   @override
@@ -306,7 +374,7 @@ class _OperationalDocumentsSummaryScreenState
             width: double.infinity,
             height: 48,
             child: ElevatedButton(
-              onPressed: _onContinue,
+              onPressed: (_isConfirming || _isLoading) ? null : _onContinue,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryBimaBase,
                 foregroundColor: AppColors.neutralWhiteLighter,
@@ -315,15 +383,24 @@ class _OperationalDocumentsSummaryScreenState
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: const Text(
-                'Continue',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  height: 1.5,
-                ),
-              ),
+              child: _isConfirming
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      'Continue',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        height: 1.5,
+                      ),
+                    ),
             ),
           ),
         ],

@@ -244,6 +244,22 @@ class DocumentExtractService {
     'Supplier note/invoice': '/documents/supplier-extractions',
   };
 
+  static const Map<String, String> confirmEndpointByType = {
+    'Stock Boxes': '/documents/confirm-stock-boxes',
+    'Supplier Docs': '/documents/confirm-supplier-documents',
+    'Document Price List': '/documents/confirm-price-list',
+    'Document Sales Record': '/documents/confirm-sales-records',
+    'Document Operational Expenditures':
+        '/documents/confirm-operational-expenditures',
+    'Daily Sales': '/documents/confirm-sales-records',
+    'Product Price List': '/documents/confirm-price-list',
+    'Operational Expenditures': '/documents/confirm-operational-expenditures',
+    'Capital Expenditures': '/documents/confirm-capital-expenditures',
+    'Supplier Extraction': '/documents/confirm-supplier-documents',
+    'Supplier Documents': '/documents/confirm-supplier-documents',
+    'Supplier note/invoice': '/documents/confirm-supplier-documents',
+  };
+
   Future<DocumentExtractResult> uploadForType({
     required String type,
     required List<OperationalDocumentItem> documents,
@@ -405,6 +421,69 @@ class DocumentExtractService {
       '(${lastResponse.statusCode}) for $type.\n'
       'Tried URLs: ${attemptedUrls.join(' , ')}',
     );
+  }
+
+  Future<DocumentExtractResult> confirmByType({
+    required String type,
+    required String extractionId,
+    required String token,
+  }) async {
+    final endpoint = confirmEndpointByType[type];
+    if (endpoint == null) {
+      return DocumentExtractResult(
+        success: false,
+        statusCode: 0,
+        message: 'Unsupported confirm document type: $type',
+      );
+    }
+    final uri = Uri.parse('$baseUrl$endpoint');
+    final bodyPayload = <String, dynamic>{
+      'extractionId': extractionId.trim(),
+      'confirmedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+    debugPrint(
+      '[DocumentExtractService] confirm request type=$type endpoint=$endpoint url=${uri.toString()} body=${jsonEncode(bodyPayload)}',
+    );
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: <String, String>{
+              HttpHeaders.acceptHeader: 'application/json',
+              HttpHeaders.authorizationHeader: 'Bearer $token',
+              HttpHeaders.contentTypeHeader: 'application/json',
+            },
+            body: jsonEncode(bodyPayload),
+          )
+          .timeout(const Duration(seconds: 60));
+      debugPrint(
+        '[DocumentExtractService] confirm response type=$type endpoint=$endpoint status=${response.statusCode} body=${response.body}',
+      );
+      final body = _tryDecodeJsonObjectSafe(response.body);
+      return DocumentExtractResult(
+        success: response.statusCode >= 200 && response.statusCode < 300,
+        statusCode: response.statusCode,
+        message: _extractMessage(body) ?? response.body,
+      );
+    } on TimeoutException {
+      return const DocumentExtractResult(
+        success: false,
+        statusCode: 0,
+        message: 'Confirm request timed out.',
+      );
+    } on SocketException {
+      return const DocumentExtractResult(
+        success: false,
+        statusCode: 0,
+        message: 'Cannot connect to server.',
+      );
+    } catch (_) {
+      return const DocumentExtractResult(
+        success: false,
+        statusCode: 0,
+        message: 'Unexpected error while confirming extraction.',
+      );
+    }
   }
 
   Future<DocumentExtractResult> _sendSingleFile({
@@ -854,38 +933,12 @@ class DocumentExtractService {
   }) async {
     final uri = Uri.parse('$baseUrl$endpoint');
     debugPrint('[DocumentExtractService][Camera] POST ${uri.toString()} (confirm)');
-    final isStockConfirm = isStockBoxesConfirmEndpoint(endpoint);
-    final isSupplierConfirm = isSupplierConfirmEndpoint(endpoint);
-    List<CameraExtractionItem> payloadItems = items;
-    if (isSupplierConfirm) {
-      payloadItems = await _resolveSupplierLineItemIds(
-        extractionId: extractionId,
-        token: token,
-        items: items,
-      );
-    }
     final bodyPayload = <String, dynamic>{
       'extractionId': extractionId,
-      'items': isStockConfirm
-          ? payloadItems.map(_toStockConfirmItemJson).toList()
-          : isSupplierConfirm
-              ? payloadItems.map(_toSupplierConfirmItemJson).toList()
-              : payloadItems
-                  .map(
-                    (item) => <String, dynamic>{
-                      'displayName': item.name,
-                      'qty': item.quantity,
-                      'uom': item.unitLabel,
-                    },
-                  )
-                  .toList(),
+      'confirmedAt': DateTime.now().toUtc().toIso8601String(),
     };
-    if (isSupplierConfirm) {
-      bodyPayload['confirmedAt'] = DateTime.now().toUtc().toIso8601String();
-      bodyPayload['source'] = 'supplier-note';
-    }
     debugPrint(
-      '[DocumentExtractService][Camera] confirm endpoint=$endpoint body=${jsonEncode(bodyPayload)}',
+      '[DocumentExtractService][Camera] confirm request endpoint=$endpoint url=${uri.toString()} body=${jsonEncode(bodyPayload)}',
     );
 
     try {
@@ -900,6 +953,9 @@ class DocumentExtractService {
             body: jsonEncode(bodyPayload),
           )
           .timeout(const Duration(seconds: 60));
+      debugPrint(
+        '[DocumentExtractService][Camera] confirm response endpoint=$endpoint status=${response.statusCode} body=${response.body}',
+      );
       final body = _tryDecodeJsonObjectSafe(response.body);
       return DocumentExtractResult(
         success: response.statusCode >= 200 && response.statusCode < 300,
