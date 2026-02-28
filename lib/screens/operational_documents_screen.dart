@@ -18,9 +18,12 @@ class OperationalDocumentsScreen extends StatefulWidget {
 
 class _OperationalDocumentsScreenState
     extends State<OperationalDocumentsScreen> {
-  static const List<String> _documentTypes = [
+  static const Set<String> _ignoredTypes = {
     'Stock Boxes',
     'Supplier Docs',
+  };
+
+  static const List<String> _documentTypes = [
     'Document Price List',
     'Document Sales Record',
     'Document Operational Expenditures',
@@ -49,21 +52,18 @@ class _OperationalDocumentsScreenState
     AppSessionState.instance.setCurrentStockAction(WarehouseStockAction.subtract);
     await AppSessionState.instance.hydrate();
     final docs = await _storageService.loadDocuments();
-
-    final List<OperationalDocumentItem> validDocs = <OperationalDocumentItem>[];
     for (final doc in docs) {
-      final exists = await _storageService.localFileExists(doc.localPath);
-      if (exists) {
-        validDocs.add(doc);
-      }
+      await _storageService.deleteLocalFile(doc);
     }
-    await _storageService.saveDocuments(validDocs);
+    await _storageService.saveDocuments(const <OperationalDocumentItem>[]);
 
     if (!mounted) return;
     setState(() {
       _uploadedDocuments
         ..clear()
-        ..addAll(validDocs);
+        ..addAll(const <OperationalDocumentItem>[]);
+      _selectedType = null;
+      _isDropdownOpen = false;
       _isLoadingSavedDocs = false;
     });
   }

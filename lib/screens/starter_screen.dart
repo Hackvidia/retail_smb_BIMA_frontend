@@ -1,5 +1,6 @@
 import 'package:retail_smb/models/capture_flow_args.dart';
 import 'package:retail_smb/models/starter_screen_args.dart';
+import 'package:retail_smb/state/app_session_state.dart';
 import 'package:retail_smb/theme/app_sizing.dart';
 import 'package:retail_smb/theme/color_schema.dart';
 import 'package:retail_smb/widgets/header_widget.dart';
@@ -15,7 +16,7 @@ class StarterScreen extends StatefulWidget {
 }
 
 class _StarterScreenState extends State<StarterScreen> {
-  StarterEntryMode _mode = StarterEntryMode.returning;
+  StarterEntryMode _mode = StarterEntryMode.firstTime;
   bool _isInitialized = false;
 
   @override
@@ -27,7 +28,11 @@ class _StarterScreenState extends State<StarterScreen> {
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is StarterScreenArgs) {
       _mode = args.mode;
+      return;
     }
+    _mode = AppSessionState.instance.isFirstTimeInput
+        ? StarterEntryMode.firstTime
+        : StarterEntryMode.returning;
   }
 
   @override
@@ -67,3 +72,4 @@ class _StarterScreenState extends State<StarterScreen> {
     );
   }
 }
+

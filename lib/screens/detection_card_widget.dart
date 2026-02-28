@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 class DetectionCardWidget extends StatelessWidget {
   final String name;
-  final int unitPrice;
+  final int? unitPrice;
   final int quantity;
   final String unitLabel;
   final VoidCallback onIncrement;
@@ -30,7 +30,7 @@ class DetectionCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final totalPrice = unitPrice * quantity;
+    final totalPrice = unitPrice == null ? null : unitPrice! * quantity;
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -94,7 +94,7 @@ class DetectionCardWidget extends StatelessWidget {
                     children: [
                       TextSpan(text: '$quantity $unitLabel, '),
                       TextSpan(
-                        text: _formatRupiah(unitPrice),
+                        text: unitPrice == null ? '-' : _formatRupiah(unitPrice!),
                         style: const TextStyle(color: AppColors.systemErrorRedBase),
                       ),
                     ],
@@ -125,7 +125,7 @@ class DetectionCardWidget extends StatelessWidget {
                 _QuantityBox(quantity: quantity),
               SizedBox(height: AppSize.height(context, 0.004)),
               Text(
-                _formatRupiah(totalPrice),
+                totalPrice == null ? '-' : _formatRupiah(totalPrice),
                 style: TextStyle(
                   fontFamily: 'Inter',
                   fontSize: AppSize.width(context, 0.033),

@@ -16,7 +16,12 @@ class BeforeDashboardScreen extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const SizedBox(height: 64),
-                _BeforeDashboardIllustration(),
+                Image.asset(
+                  'assets/images/bima-with-tablet.png',
+                  width: 290,
+                  height: 192,
+                  fit: BoxFit.contain,
+                ),
                 const SizedBox(height: 40),
                 const Text(
                   "We're ready to start",
@@ -48,7 +53,7 @@ class BeforeDashboardScreen extends StatelessWidget {
                   child: ElevatedButton(
                     onPressed: () => Navigator.pushReplacementNamed(
                       context,
-                      '/login',
+                      '/home-screen',
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primaryBimaBase,

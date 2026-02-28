@@ -1,7 +1,9 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:retail_smb/models/capture_flow_args.dart';
 import 'package:retail_smb/models/detection_result_item.dart';
+import 'package:retail_smb/services/document_extract_service.dart';
 import 'package:retail_smb/state/app_session_state.dart';
 import 'package:retail_smb/theme/app_sizing.dart';
 import 'package:retail_smb/theme/color_schema.dart';
@@ -21,6 +23,9 @@ class SubmitCaptureScreen extends StatefulWidget {
 class _SubmitCaptureScreenState extends State<SubmitCaptureScreen> {
   String? _imagePath;
   bool _markFirstInputOnUsePhoto = false;
+  String? _stockDocumentType;
+  bool _isSubmitting = false;
+  final DocumentExtractService _extractService = DocumentExtractService();
 
   void _retakePhoto() {
     if (Navigator.of(context).canPop()) {
@@ -31,34 +36,92 @@ class _SubmitCaptureScreenState extends State<SubmitCaptureScreen> {
     Navigator.pushReplacementNamed(context, '/scan-camera');
   }
 
-  void _usePhoto() {
-    if (_markFirstInputOnUsePhoto) {
-      AppSessionState.instance.markFirstInputCompleted();
+  Future<void> _usePhoto() async {
+    if (_isSubmitting) return;
+    final imagePath = _imagePath;
+    if (imagePath == null || imagePath.isEmpty) {
+      _showSnack('No image selected.');
+      return;
+    }
+    final stockDocumentType = _stockDocumentType;
+    if (stockDocumentType == null || stockDocumentType.trim().isEmpty) {
+      _showSnack('Document type is missing. Please retake from Camera Prep.');
+      return;
     }
 
-    final args = PhotoDetectionArgs(
-      imagePath: _imagePath,
-      detectedItems: const [
-        DetectionResultItem(
-          id: 'item-1',
-          name: 'ANL ACTIFIT 3X MP GINGER 20G (12X10 SACHET)',
-          unitPrice: 20833,
-          quantity: 3,
-        ),
-        DetectionResultItem(
-          id: 'item-2',
-          name: 'SUSU KENTAL MANIS COKLAT 370 GR',
-          unitPrice: 12500,
-          quantity: 2,
-        ),
-      ],
-    );
+    setState(() => _isSubmitting = true);
+    try {
+      await AppSessionState.instance.hydrate();
+      final token = AppSessionState.instance.authToken;
+      if (token == null || token.trim().isEmpty) {
+        _showSnack('Session expired. Please login again.');
+        return;
+      }
 
-    Navigator.pushReplacementNamed(
-      context,
-      '/photo-detection-result',
-      arguments: args,
-    );
+      final result = await _extractService.uploadCameraPhoto(
+        cameraDocumentType: stockDocumentType,
+        imagePath: imagePath,
+        token: token,
+      );
+      if (!result.success) {
+        _showSnack(result.message ?? 'Failed to upload photo.');
+        return;
+      }
+
+      if (_markFirstInputOnUsePhoto) {
+        AppSessionState.instance.markFirstInputCompleted();
+      }
+
+      final detectedItems = result.items
+          .map(
+            (item) => DetectionResultItem(
+              id: item.id,
+              name: item.name,
+              unitPrice: item.unitPrice,
+              quantity: item.quantity,
+              unitLabel: item.unitLabel,
+              sourceNames: item.sourceNames,
+            ),
+          )
+          .toList();
+
+      debugPrint(
+        '[SubmitCaptureScreen] Upload success type=$stockDocumentType extractionId=${result.extractionId} items=${detectedItems.length}',
+      );
+
+      final extractionId = result.extractionId?.trim();
+      if (extractionId == null || extractionId.isEmpty) {
+        _showSnack('Extraction succeeded but extractionId is missing.');
+        return;
+      }
+      final confirmEndpoint = _extractService.cameraConfirmEndpoint(stockDocumentType);
+      final manualAddEndpoint = _extractService.cameraManualAddEndpoint(
+        stockDocumentType,
+        extractionId,
+      );
+
+      final args = PhotoDetectionArgs(
+        imagePath: imagePath,
+        detectedItems: detectedItems,
+        extractionId: extractionId,
+        confirmEndpoint: confirmEndpoint,
+        manualAddEndpoint: manualAddEndpoint,
+        sourceType: stockDocumentType,
+      );
+
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(
+        context,
+        '/photo-detection-result',
+        arguments: args,
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -71,6 +134,7 @@ class _SubmitCaptureScreenState extends State<SubmitCaptureScreen> {
       } else if (routeArgument is SubmitCaptureArgs) {
         _imagePath = routeArgument.imagePath;
         _markFirstInputOnUsePhoto = routeArgument.markFirstInputOnUsePhoto;
+        _stockDocumentType = routeArgument.stockDocumentType;
       } else if (routeArgument is String && routeArgument.isNotEmpty) {
         _imagePath = routeArgument;
       }
@@ -179,7 +243,7 @@ class _SubmitCaptureScreenState extends State<SubmitCaptureScreen> {
                                       ),
                                     ),
                                     child: TextButton(
-                                      onPressed: _usePhoto,
+                                      onPressed: _isSubmitting ? null : _usePhoto,
                                       child: Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.center,
@@ -189,7 +253,9 @@ class _SubmitCaptureScreenState extends State<SubmitCaptureScreen> {
                                           Expanded(
                                             flex: 1,
                                             child: Text(
-                                              'Use Photo',
+                                              _isSubmitting
+                                                  ? 'Uploading...'
+                                                  : 'Use Photo',
                                               style: AppTextStyles.button,
                                               textAlign: TextAlign.center,
                                             ),

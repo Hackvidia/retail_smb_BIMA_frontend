@@ -90,6 +90,7 @@ flutter:
     - assets/images/puzzle-piece-icon.png
     - assets/images/shelves-photo.png
     - assets/images/supplier-invoice.png
+    - assets/images/bima-with-tablet.png
 
   # list giving the asset and other descriptors for the font. For
   # example:

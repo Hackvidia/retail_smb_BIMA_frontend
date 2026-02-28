@@ -86,7 +86,6 @@ class _CameraPrepScreenState extends State<CameraPrepScreen> {
                         Column(
                           children: [
                             _buildTopBubble(),
-                            const SizedBox(height: 18),
                             _buildMainCard(),
                           ],
                         ),
@@ -108,7 +107,7 @@ class _CameraPrepScreenState extends State<CameraPrepScreen> {
       child: Stack(
         children: [
           Positioned(
-            left: 114,
+            left: 80,
             right: 0,
             top: 0,
             child: Container(
@@ -133,7 +132,7 @@ class _CameraPrepScreenState extends State<CameraPrepScreen> {
             left: 0,
             top: 15,
             child: Image.asset(
-              'assets/images/bima-icon.png',
+              'assets/images/bima-left-icon.png',
               width: 95,
               height: 95,
               fit: BoxFit.contain,

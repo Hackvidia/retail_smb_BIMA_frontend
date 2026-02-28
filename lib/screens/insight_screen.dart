@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:retail_smb/services/financial_diary_service.dart';
+import 'package:retail_smb/state/app_session_state.dart';
 import 'package:retail_smb/theme/color_schema.dart';
 import 'package:retail_smb/widgets/app_bottom_navigation_bar.dart';
 import 'package:retail_smb/widgets/insight_section_widget.dart';
@@ -11,97 +13,73 @@ class InsightScreen extends StatefulWidget {
 }
 
 class _InsightScreenState extends State<InsightScreen> {
+  final FinancialDiaryService _financialDiaryService = FinancialDiaryService();
+
   bool _isLoading = true;
   FinancialDiaryData? _financialDiary;
   List<TrendTableRowData> _outOfTrendRows = const [];
-  List<PriceChangeRowData> _priceChanges = const [];
-  DemandTrendData? _demandTrend;
-  TransactionTrendData? _transactionTrend;
+  List<TrendTableRowData> _stockOverviewRows = const [];
+  String _headlineTitle = "Let's see how your shop is doing this week";
 
   @override
   void initState() {
     super.initState();
-    _loadDummyBackendData();
+    _loadOverview();
   }
 
-  Future<void> _loadDummyBackendData() async {
-    await Future<void>.delayed(const Duration(milliseconds: 350));
+  Future<void> _loadOverview() async {
+    try {
+      await AppSessionState.instance.hydrate();
+      final token = AppSessionState.instance.authToken;
+      if (token == null || token.trim().isEmpty) {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        return;
+      }
 
-    if (!mounted) return;
-    setState(() {
-      _financialDiary = const FinancialDiaryData(
-        progress: 0.52,
-        percentText: '52%',
-        deltaText: 'Rp +1,09 M',
-        costText: 'Cost (Rp 12,46M)',
-        profitText: 'Profit (Rp 13,54M)',
-      );
-      _outOfTrendRows = const [
-        TrendTableRowData(
-          item: 'Aqua',
-          stockLevel: '20 Cartons',
-          status: 'Take it Out',
-          statusColor: AppColors.systemErrorRedBase,
-        ),
-        TrendTableRowData(
-          item: 'Indomie\nGoreng',
-          stockLevel: '8 Cartons',
-          status: 'Good\nPoint!',
-          statusColor: AppColors.systemWarningYellowLighter,
-        ),
-        TrendTableRowData(
-          item: 'Teh Botol',
-          stockLevel: '10 Cartons',
-          status: 'Good\nPoint!',
-          statusColor: AppColors.systemWarningYellowLighter,
-        ),
-      ];
-      _priceChanges = const [
-        PriceChangeRowData(
-          item: 'Indomie Goreng',
-          changeText: '+5% (+Rp 700)',
-          isUp: true,
-        ),
-        PriceChangeRowData(
-          item: 'Aqua 600ml',
-          changeText: '-5% (-Rp 500)',
-          isUp: false,
-        ),
-      ];
-      _demandTrend = const DemandTrendData(
-        item: 'Indomie Goreng',
-        changeText: '+15% (+115pcs)',
-        isUp: true,
-        points: [
-          8,
-          8.5,
-          9,
-          9.2,
-          10,
-          10.5,
-          11,
-          12,
-          15,
-          19,
-          24,
-          28,
-          34,
-          42,
-          40,
-          48,
-          52,
-          58,
-          54,
-          70,
-        ],
-        labels: ['Jul 14', 'Jul 15', 'Jul 16', 'Jul 17', 'Jul 18', 'Jul 19'],
-      );
-      _transactionTrend = const TransactionTrendData(
-        bars: [38, 65, 54, 48],
-        labels: ['4 weeks ago', '3 weeks ago', '2 weeks ago', 'This week'],
-      );
-      _isLoading = false;
-    });
+      final data =
+          await _financialDiaryService.fetchOverview(token: token.trim());
+      if (!mounted) return;
+      if (data == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      setState(() {
+        _headlineTitle = data.headlineTitle;
+        _financialDiary = FinancialDiaryData(
+          progress: data.progressPercent / 100,
+          percentText: '${data.progressPercent}%',
+          deltaText: data.deltaText,
+          costText: data.costText,
+          profitText: data.profitText,
+        );
+        _outOfTrendRows = data.outOfTrendRows
+            .map(
+              (row) => TrendTableRowData(
+                item: row.itemName.isEmpty ? '-' : row.itemName,
+                stockLevel: row.stockLevel.isEmpty ? '-' : row.stockLevel,
+                status: row.status.isEmpty ? '-' : row.status,
+                statusColor: _statusColor(row.status),
+              ),
+            )
+            .toList();
+        _stockOverviewRows = data.stockOverviewRows
+            .map(
+              (row) => TrendTableRowData(
+                item: row.itemName.isEmpty ? '-' : row.itemName,
+                stockLevel: row.stockLevel.isEmpty ? '-' : row.stockLevel,
+                status: _normalizeStatusLabel(row.status),
+                statusColor: _statusColor(row.status),
+              ),
+            )
+            .toList();
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -117,31 +95,22 @@ class _InsightScreenState extends State<InsightScreen> {
                   children: [
                     _buildSpeechBubbleRow(),
                     const SizedBox(height: 14),
-                    InsightSectionWidget.financialDiary(
-                      financialDiaryData: _financialDiary!,
-                      onSeeAllTap: () =>
-                          _showMessage('See all Financial Diary'),
-                    ),
+                    if (_financialDiary != null)
+                      InsightSectionWidget.financialDiary(
+                        financialDiaryData: _financialDiary!,
+                        onSeeAllTap: () =>
+                            _showMessage('See all Financial Diary'),
+                      ),
                     const SizedBox(height: 12),
                     InsightSectionWidget.outOfTrend(
                       outOfTrendRows: _outOfTrendRows,
                       onSeeAllTap: () => _showMessage('See all Out of Trend'),
                     ),
                     const SizedBox(height: 12),
-                    InsightSectionWidget.priceChange(
-                      priceChanges: _priceChanges,
-                      onSeeAllTap: () => _showMessage('See all Price Change'),
-                    ),
-                    const SizedBox(height: 12),
-                    InsightSectionWidget.demandTrend(
-                      demandTrendData: _demandTrend!,
-                      onSeeAllTap: () => _showMessage('See all Demand Trend'),
-                    ),
-                    const SizedBox(height: 12),
-                    InsightSectionWidget.transactionTrend(
-                      transactionTrendData: _transactionTrend!,
-                      onSeeAllTap: () =>
-                          _showMessage('See all Transaction Trend'),
+                    InsightSectionWidget.outOfTrend(
+                      title: 'Stock Overview',
+                      outOfTrendRows: _stockOverviewRows,
+                      onSeeAllTap: () => _showMessage('See all Stock Overview'),
                     ),
                   ],
                 ),
@@ -180,14 +149,15 @@ class _InsightScreenState extends State<InsightScreen> {
               clipBehavior: Clip.none,
               children: [
                 Container(
+                  constraints: const BoxConstraints(minHeight: 58),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
                   decoration: BoxDecoration(
                     color: AppColors.primaryBimaDarker,
                     borderRadius: BorderRadius.circular(5),
                   ),
-                  child: const Text(
-                    "Let's see how your shop is doing this week",
+                  child: Text(
+                    _headlineTitle,
                     style: TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 14,
@@ -216,6 +186,35 @@ class _InsightScreenState extends State<InsightScreen> {
   void _showMessage(String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String _normalizeStatusLabel(String status) {
+    final normalized = status.trim().toLowerCase();
+    if (normalized == 'on_track' || normalized == 'on track') {
+      return 'On Track';
+    }
+    if (normalized == 'running_low' || normalized == 'running low') {
+      return 'Running Low';
+    }
+    if (normalized == 'out_of_stock' || normalized == 'out of stock') {
+      return 'Out of Stock';
+    }
+    return status.isEmpty ? '-' : status;
+  }
+
+  Color _statusColor(String status) {
+    final normalized = status.trim().toLowerCase();
+    if (normalized == 'take it out' ||
+        normalized == 'out_of_stock' ||
+        normalized == 'out of stock') {
+      return AppColors.systemErrorRedBase;
+    }
+    if (normalized == 'good point!' ||
+        normalized == 'running_low' ||
+        normalized == 'running low') {
+      return AppColors.systemWarningYellowLighter;
+    }
+    return AppColors.primaryBimaBase;
   }
 }
 

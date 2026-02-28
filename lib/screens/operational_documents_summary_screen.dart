@@ -16,6 +16,10 @@ class OperationalDocumentsSummaryScreen extends StatefulWidget {
 class _OperationalDocumentsSummaryScreenState
     extends State<OperationalDocumentsSummaryScreen> {
   final DocumentExtractService _extractService = DocumentExtractService();
+  static const Set<String> _ignoredTypes = {
+    'Stock Boxes',
+    'Supplier Docs',
+  };
 
   bool _isInitialized = false;
   bool _isLoading = true;
@@ -31,15 +35,26 @@ class _OperationalDocumentsSummaryScreenState
     _isInitialized = true;
 
     final args = ModalRoute.of(context)?.settings.arguments;
-    if (args is OperationalDocumentsSummaryArgs && args.extractionRefs.isNotEmpty) {
-      _extractionRefs = args.extractionRefs;
+    if (args is OperationalDocumentsSummaryArgs &&
+        args.extractionRefs.isNotEmpty) {
+      _extractionRefs = args.extractionRefs
+          .where((ref) => !_ignoredTypes.contains(ref.type))
+          .toList();
+      if (_extractionRefs.isEmpty) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'No supported extraction references found.';
+        });
+        return;
+      }
       _loadSummaries();
       return;
     }
 
     setState(() {
       _isLoading = false;
-      _errorMessage = 'No extraction references found. Please upload docs again.';
+      _errorMessage =
+          'No extraction references found. Please upload docs again.';
     });
   }
 
@@ -104,7 +119,6 @@ class _OperationalDocumentsSummaryScreenState
               width: 412,
               child: Column(
                 children: [
-                  const SizedBox(height: 20),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 26),
                     child: Align(
@@ -164,7 +178,7 @@ class _OperationalDocumentsSummaryScreenState
             top: 0,
             child: Container(
               width: 229,
-              height: 76,
+              height: 70,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: AppColors.primaryBimaDarker,
@@ -250,14 +264,13 @@ class _OperationalDocumentsSummaryScreenState
             )
           else
             SizedBox(
-              height: 360,
+              height: 250,
               child: ListView.separated(
                 itemCount: _cards.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (_, index) => _summaryCard(_cards[index]),
               ),
             ),
-          const SizedBox(height: 20),
           const Text.rich(
             TextSpan(
               text: 'This is just ',
@@ -366,7 +379,8 @@ class _OperationalDocumentsSummaryScreenState
                 Expanded(child: Text('Item', style: _headerStyle)),
                 Expanded(child: Text('Type of stocks', style: _headerStyle)),
                 Expanded(
-                  child: Text('Price', textAlign: TextAlign.right, style: _headerStyle),
+                  child: Text('Price',
+                      textAlign: TextAlign.right, style: _headerStyle),
                 ),
               ],
             ),
@@ -392,7 +406,8 @@ class _OperationalDocumentsSummaryScreenState
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Expanded(child: Text(row.item, style: _rowStyle)),
+                                Expanded(
+                                    child: Text(row.item, style: _rowStyle)),
                                 Expanded(
                                   child: Text(row.stockType, style: _rowStyle),
                                 ),

@@ -25,11 +25,13 @@ class QuickActionMenuItem {
 class BusinessHealthItem {
   final String prefixText;
   final String highlightedText;
+  final String suffixText;
   final Color markerColor;
 
   const BusinessHealthItem({
     required this.prefixText,
     required this.highlightedText,
+    this.suffixText = '',
     required this.markerColor,
   });
 }
@@ -273,6 +275,7 @@ class _BusinessHealthContent extends StatelessWidget {
                                 color: AppColors.primaryBimaDark,
                               ),
                             ),
+                            TextSpan(text: item.suffixText),
                           ],
                         ),
                       ),

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:retail_smb/models/starter_screen_args.dart';
+import 'package:retail_smb/services/home_overview_service.dart';
+import 'package:retail_smb/state/app_session_state.dart';
 import 'package:retail_smb/theme/color_schema.dart';
 import 'package:retail_smb/widgets/app_bottom_navigation_bar.dart';
+import 'package:retail_smb/widgets/dashboard_card_container.dart';
 import 'package:retail_smb/widgets/quick_action_widget.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -12,6 +15,31 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final HomeOverviewService _homeOverviewService = HomeOverviewService();
+
+  List<BusinessHealthItem> _businessHealthItems = const [
+    BusinessHealthItem(
+      prefixText: 'Your stock of ',
+      highlightedText: 'Indomie goreng',
+      suffixText: ' was safe!',
+      markerColor: AppColors.systemGreenBase,
+    ),
+    BusinessHealthItem(
+      prefixText: 'You almost forgot to order ',
+      highlightedText: 'Indomie goreng',
+      markerColor: AppColors.systemWarningYellowLighter,
+    ),
+  ];
+  String _reminderTitle = 'Tepung Serbaguna is Overstock';
+  String _reminderMessage =
+      "It's been more than 3 months since stock hasn't decreased";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBusinessHealth();
+  }
+
   void _navigateToAction(String title) {
     if (title == 'Add Data') {
       Navigator.pushNamed(
@@ -24,6 +52,64 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => _DummyActionScreen(title: title)));
+  }
+
+  Future<void> _loadBusinessHealth() async {
+    try {
+      await AppSessionState.instance.hydrate();
+      final token = AppSessionState.instance.authToken;
+      if (token == null || token.trim().isEmpty) return;
+
+      final data =
+          await _homeOverviewService.fetchBusinessHealth(token: token.trim());
+      if (!mounted || data == null) return;
+
+      setState(() {
+        _reminderTitle = data.warningItemName.isEmpty
+            ? _reminderTitle
+            : data.warningItemName;
+        _reminderMessage = data.warningMessage.isEmpty
+            ? _reminderMessage
+            : data.warningMessage;
+        _businessHealthItems = [
+          _buildBusinessHealthItem(
+            itemName: data.safeItemName,
+            message: data.safeMessage,
+            markerColor: AppColors.systemGreenBase,
+          ),
+          _buildBusinessHealthItem(
+            itemName: data.warningItemName,
+            message: data.warningMessage,
+            markerColor: AppColors.systemWarningYellowLighter,
+          ),
+        ];
+      });
+    } catch (_) {
+      // Keep defaults when API fails.
+    }
+  }
+
+  BusinessHealthItem _buildBusinessHealthItem({
+    required String itemName,
+    required String message,
+    required Color markerColor,
+  }) {
+    if (itemName.isNotEmpty && message.contains(itemName)) {
+      final split = message.split(itemName);
+      final prefix = split.isNotEmpty ? split.first : '';
+      final suffix = split.length > 1 ? split.sublist(1).join(itemName) : '';
+      return BusinessHealthItem(
+        prefixText: prefix,
+        highlightedText: itemName,
+        suffixText: suffix,
+        markerColor: markerColor,
+      );
+    }
+    return BusinessHealthItem(
+      prefixText: message.isEmpty ? '' : '$message ',
+      highlightedText: itemName.isEmpty ? '-' : itemName,
+      markerColor: markerColor,
+    );
   }
 
   @override
@@ -51,86 +137,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     assetPath: 'assets/images/sm-icon.png',
                     onTap: () => _navigateToAction('Activity'),
                   ),
-                  QuickActionMenuItem(
-                    title: 'One Tap Order',
-                    assetPath: 'assets/images/puzzle-piece-icon.png',
-                    onTap: () => _navigateToAction('One Tap Order'),
-                  ),
                 ],
               ),
               const SizedBox(height: 12),
-              const DashboardSectionWidget.businessHealth(
-                businessHealthItems: [
-                  BusinessHealthItem(
-                    prefixText: 'You order the most often ',
-                    highlightedText: 'Indomie goreng',
-                    markerColor: AppColors.systemGreenBase,
-                  ),
-                  BusinessHealthItem(
-                    prefixText: 'You almost forgot to order ',
-                    highlightedText: 'Indomie goreng',
-                    markerColor: AppColors.systemWarningYellowLighter,
-                  ),
-                ],
-              ),
+              _buildReminderCard(),
               const SizedBox(height: 12),
-              DashboardSectionWidget.prioritazionAction(
-                prioritazionAction: PrioritazionActionData(
-                  itemName: 'Indomie 3 Boxes',
-                  actionText: 'order tomorrow',
-                  dateText: 'Friday: 30 Jan 2026',
-                  onPrimaryTap: () => _showActionMessage('Snooze clicked'),
-                  onSecondaryTap: () => _showActionMessage('Chat clicked'),
-                ),
-                onSeeAllTap: () => _showActionMessage('See all prioritazion'),
-              ),
-              const SizedBox(height: 12),
-              DashboardSectionWidget.stockOverview(
-                onSeeAllTap: () => _showActionMessage('See all stock overview'),
-                overviewRows: const [
-                  OverviewRowData(
-                    item: 'Aqua',
-                    value: '20 Cartons',
-                    status: 'On Track',
-                    statusColor: AppColors.primaryBimaBase,
-                  ),
-                  OverviewRowData(
-                    item: 'Indomie\nGoreng',
-                    value: '8 Cartons',
-                    status: 'Running\nLow',
-                    statusColor: AppColors.systemWarningYellowLighter,
-                  ),
-                  OverviewRowData(
-                    item: 'Teh Botol',
-                    value: '0 Cartons',
-                    status: 'Out of\nStock',
-                    statusColor: AppColors.systemErrorRedBase,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              DashboardSectionWidget.weeklySales(
-                onSeeAllTap: () => _showActionMessage('See all weekly sales'),
-                overviewRows: const [
-                  OverviewRowData(
-                    item: 'Aqua',
-                    value: '20 Cartons',
-                    status: 'On Track',
-                    statusColor: AppColors.primaryBimaBase,
-                  ),
-                  OverviewRowData(
-                    item: 'Indomie\nGoreng',
-                    value: '8 Cartons',
-                    status: 'Running\nLow',
-                    statusColor: AppColors.systemWarningYellowLighter,
-                  ),
-                  OverviewRowData(
-                    item: 'Teh Botol',
-                    value: '0 Cartons',
-                    status: 'Out of\nStock',
-                    statusColor: AppColors.systemErrorRedBase,
-                  ),
-                ],
+              DashboardSectionWidget.businessHealth(
+                businessHealthItems: _businessHealthItems,
               ),
             ],
           ),
@@ -212,7 +225,7 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Image.asset(
-            'assets/images/bima-icon.png',
+            'assets/images/sm-icon.png',
             width: 60,
             height: 50,
             fit: BoxFit.contain,
@@ -252,6 +265,91 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildReminderCard() {
+    return DashboardCardContainer(
+      title: 'Reminder',
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(5),
+          border: Border.all(color: AppColors.primaryBimaLighter),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _reminderTitle,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 34 / 2,
+                fontWeight: FontWeight.w700,
+                height: 1.2,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _reminderMessage,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                height: 1.4,
+                color: AppColors.neutralBlackLighter,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                OutlinedButton(
+                  onPressed: () => _showActionMessage('Detail clicked'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(74, 36),
+                    side: const BorderSide(color: AppColors.primaryBimaBase),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'Detail',
+                    style: TextStyle(
+                      fontFamily: 'Lato',
+                      fontSize: 24 / 2,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.primaryBimaBase,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () => _showActionMessage('Take out now clicked'),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(108, 36),
+                    backgroundColor: AppColors.primaryBimaBase,
+                    foregroundColor: AppColors.neutralWhiteLighter,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'Take out now',
+                    style: TextStyle(
+                      fontFamily: 'Lato',
+                      fontSize: 24 / 2,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
